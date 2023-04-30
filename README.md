@@ -12,7 +12,7 @@ Autor: Alexandre Alves Marinho
 Será necessário ter todas as libs python listadas no `requirements.txt` instaladas.
 Após clonar o repositório, é necessário ir ao diretório raiz, pelo terminal, para poder executar os comandos descritos abaixo.
 
-O comando abaixo instala as dependências/bibliotecas, descritas no arquivo `requirements.txt`:
+O comando abaixo instala as dependências/bibliotecas, descritas no arquivo `requirements.txt` (Python v3.10.0):
 ```
 (env)$ pip install -r requirements.txt
 ```
