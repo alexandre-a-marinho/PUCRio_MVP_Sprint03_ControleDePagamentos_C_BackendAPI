@@ -64,13 +64,13 @@ def add_pagamento(form: PagamentoSchema):
         return apresenta_pagamento(pagamento), 200
 
     except IntegrityError as e:
-        error_msg = "Erro de integridade na adição do seguinte Pagamento :/"
+        error_msg = "Erro de integridade na adição do novo Pagamento :/"
         logger.warning(f"Erro ao adicionar Pagamento #{pagamento.id}({pagamento.descricao}): {error_msg}")
         return {"mesage": error_msg}, 409
 
     except Exception as e:
         # caso ocorra um erro fora do previsto
-        error_msg = "Não foi possível salvar novo Pagamento :/"
+        error_msg = "Não foi possível salvar o novo Pagamento :/"
         logger.warning(f"Erro ao adicionar Pagamento #{pagamento.id}({pagamento.descricao}): {error_msg}")
         return {"mesage": error_msg}, 400
 
