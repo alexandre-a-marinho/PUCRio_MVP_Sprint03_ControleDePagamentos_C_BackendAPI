@@ -1,4 +1,4 @@
-from flask_openapi3 import OpenAPI, Info, Taganalysis_tag
+from flask_openapi3 import OpenAPI, Info, Tag
 from flask import redirect
 from flask_caching import Cache
 from datetime import date
