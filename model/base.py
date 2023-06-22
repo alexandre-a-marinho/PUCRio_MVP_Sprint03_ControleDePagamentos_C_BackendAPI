@@ -1,4 +1,4 @@
 from sqlalchemy.ext.declarative import declarative_base
 
-# Cria uma classe Base para o instanciamento de novos objetos/tabelas
+# Creates a base class to instantiate new objects/tables
 Base = declarative_base()

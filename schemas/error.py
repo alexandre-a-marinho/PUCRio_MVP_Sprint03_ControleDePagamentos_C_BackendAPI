@@ -2,6 +2,6 @@ from pydantic import BaseModel
 
 
 class ErrorSchema(BaseModel):
-    """ Define como uma mensagem de erro será representada
+    """ Defines how to represent an error message
     """
-    message: str = "Detalhes sobre os erros encontrados"
+    message: str = "Details about the errors found"

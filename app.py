@@ -1,4 +1,4 @@
-from flask_openapi3 import OpenAPI, Info, Tag
+from flask_openapi3 import OpenAPI, Info, Taganalysis_tag
 from flask import redirect
 from flask_caching import Cache
 from datetime import date
@@ -6,190 +6,189 @@ from datetime import date
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
 
-from model import Session, Pagamento
+from model import Session, Payment
 from logger import logger
 from schemas import *
 from flask_cors import CORS
 
-info = Info(title="Controle de Pagamentos", version="1.0.0")
+info = Info(title="Payments Control", version="1.0.0")
 app = OpenAPI(__name__, info=info)
 CORS(app)
 
-# Seta cache
+# Sets cache
 app.config['CACHE_TYPE'] = 'simple'
 cache = Cache(app)
 
-# Definindo tags
-home_tag = Tag(name="Documentação", description="Seleção de documentação: Swagger, Redoc ou RapiDoc")
-pagamento_tag = Tag(name="Pagamento", description="Adição, visualização e remoção de pagamentos da base")
-analise_tag = Tag(name="Análise", description="Estatísticas a análises sobre os pagamentos da base")
+# Defining tags
+home_tag = Tag(name="Documentation", description="Documentation selection: Swagger, Redoc or RapiDoc")
+payment_tag = Tag(name="Payment", description="Addition, visualization and deletion of payments from the database")
+analysis_tag = Tag(name="Analysis", description="Statistics and analysis regarding the payments in the database")
 
 
 #  --------------------------------------------------------------------------------------
-#  Rotas
+#  Routes
 #  --------------------------------------------------------------------------------------
 @app.get('/', tags=[home_tag])
 def home():
-    """Redireciona para /openapi, permitindo escolher o estilo de documentação."""
+    """Redirects to /openapi, allowing us to chose the type od documentation."""
     return redirect('/openapi')
 
 
-@app.post('/pagamento', tags=[pagamento_tag],
-          responses={"200": PagamentoViewSchema, "409": ErrorSchema, "400": ErrorSchema})
-def add_pagamento(form: PagamentoSchema):
-    """Adiciona um novo Pagamento à base de dados.
+@app.post('/payment', tags=[payment_tag],
+          responses={"200": PaymentViewSchema, "409": ErrorSchema, "400": ErrorSchema})
+def add_payment(form: PaymentSchema):
+    """Adds a new Payment to the database.
 
-    Retorna uma representação do Pagamento adicionado.
+    Returns the representation of the added Payment (as per PaymentViewSchema).
     """
-    pagamento = Pagamento(
-        descricao = form.descricao,
-        categoria = form.categoria,
-        subcategoria = form.subcategoria,
-        valor = form.valor,
-        num_parcelas = form.num_parcelas,
-        data_insercao = date.today())
+    payment = Payment(
+        description = form.description,
+        category = form.category,
+        subcategory = form.subcategory,
+        value = form.value,
+        nb_installments = form.nb_installments,
+        insertion_date = date.today())
     # TODO: [1] Feature: allow user to add custom date
     
-    logger.debug(f"Adicionando Pagamento descrito por: '{pagamento.descricao}'")
+    logger.debug(f"Added Payment is described by: '{payment.description}'")
     try:
-        # Cria conexão com a base
+        # Creates database connection
         session = Session()
 
-        # Adiciona novo item na tabela e efetiva a adição (commit)
-        session.add(pagamento)
+        # Adds new item to the database table and commits it
+        session.add(payment)
         session.commit()
-        logger.debug(f"Adicionado Pagamento descrito por: '{pagamento.descricao}'")
-        valor_a_acrescentar = form.valor
-        atualiza_cache_da_soma_pagamentos(valor_a_acrescentar)
-        return apresenta_pagamento(pagamento), 200
+        logger.debug(f"Added Payment is described by: '{payment.description}'")
+        value_to_add = form.value
+        updates_payments_sum_cache(value_to_add)
+        return show_payment(payment), 200
 
     except IntegrityError as e:
-        error_msg = "Erro de integridade na adição do novo Pagamento :/"
-        logger.warning(f"Erro ao adicionar Pagamento #{pagamento.id}({pagamento.descricao}): {error_msg}")
-        return {"mesage": error_msg}, 409
+        error_msg = "Integrity error on new Payment addition :/"
+        logger.warning(f"Error while adding Payment #{payment.id}({payment.description}): {error_msg}")
+        return {"message": error_msg}, 409
 
     except Exception as e:
-        # caso ocorra um erro fora do previsto
-        error_msg = "Não foi possível salvar o novo Pagamento :/"
-        logger.warning(f"Erro ao adicionar Pagamento #{pagamento.id}({pagamento.descricao}): {error_msg}")
-        return {"mesage": error_msg}, 400
+        # in case of a non-expected error
+        error_msg = "It was not possible to save the new Payment :/"
+        logger.warning(f"Error while adding Payment #{payment.id}({payment.description}): {error_msg}")
+        return {"message": error_msg}, 400
 
 
-@app.get('/pagamentos', tags=[pagamento_tag],
-         responses={"200": ListagemPagamentosSchema, "404": ErrorSchema})
-def get_pagamentos():
-    """Faz a busca por todos os Pagamentos cadastrados.
+@app.get('/payments', tags=[payment_tag],
+         responses={"200": PaymentsListSchema, "404": ErrorSchema})
+def get_payments():
+    """Searches for all registered Payments.
 
-    Retorna uma representação da lista de todos os Pagamentos cadastrados (se
-    existir algum).
+    Returns the representation of a list of all registred Payments (if any exists).
     """
-    logger.debug(f"Coletando Pagamentos ")
+    logger.debug(f"Getting Payments")
     
-    # Cria conexão com a base para fazer a busca
+    # Creates database connectio to perform the search
     session = Session()
-    pagamentos = session.query(Pagamento).all()
+    payments = session.query(Payment).all()
 
-    if pagamentos:
-        logger.debug(f"%d Pagamentos econtrados" % len(pagamentos))
-        print(pagamentos)
-        atualiza_cache_da_soma_pagamentos(0)
-        # retorna a representação da lista dos Pagamentos encontrados
-        return apresenta_pagamentos(pagamentos), 200
+    if payments:
+        logger.debug(f"%d Payments found" % len(payments))
+        print(payments)
+        updates_payments_sum_cache(0)
+        # retuns the representation of the list of all payments found
+        return show_payments(payments), 200
     else:
-        # retorno vazio se nada for encontrado
-        return {"pagamentos": []}, 200
+        # retorno empty if nothing is found
+        return {"payments": []}, 200
 
 
-@app.get('/pagamento', tags=[pagamento_tag],
-         responses={"200": PagamentoViewSchema, "404": ErrorSchema})
-def get_pagamento(query: PagamentoBuscaSchema):
-    """Faz a busca por um Pagamento a partir do seu Id.
+@app.get('/payment', tags=[payment_tag],
+         responses={"200": PaymentViewSchema, "404": ErrorSchema})
+def get_payment(query: PaymentSearchSchema):
+    """Searches a Payment based on it's Id.
 
-    Retorna uma representação do Pagamento encontrado (se encontrado).
+    Returns the representation of a Payment (if found).
     """
-    pagamento_id = query.id
-    logger.debug(f"Coletando dados sobre o Pagamento #{pagamento_id}")
+    payment_id = query.id
+    logger.debug(f"Getting Payment data #{payment_id}")
 
-    # Cria conexão com a base para fazer a busca
+    # Creates database connectio to perform the search
     session = Session()
 
-    # Busca por Id
-    pagamento = session.query(Pagamento).filter(Pagamento.id == pagamento_id).first()
+    # Searchs using payment Id
+    payment = session.query(Payment).filter(Payment.id == payment_id).first()
 
-    if pagamento:
-        logger.debug(f"Pagamento econtrado: #{pagamento_id}")
-        return apresenta_pagamento(pagamento), 200
+    if payment:
+        logger.debug(f"Payment found: #{payment_id}")
+        return show_payment(payment), 200
     else:
-        error_msg = "Pagamento não encontrado na base :/"
-        logger.warning(f"Erro ao buscar Pagamento #{pagamento_id}: {error_msg}")
-        return {"mesage": error_msg}, 404
+        error_msg = "Payment not found in database :/"
+        logger.warning(f"Erro while searching for Payment #{payment_id}: {error_msg}")
+        return {"message": error_msg}, 404
 
 
-@app.delete('/pagamento', tags=[pagamento_tag],
-            responses={"200": PagamentoDelSchema, "404": ErrorSchema})
-def del_pagamento(query: PagamentoBuscaSchema):
-    """Remove um Pagamento a partir do seu Id.
+@app.delete('/payment', tags=[payment_tag],
+            responses={"200": PaymentDelSchema, "404": ErrorSchema})
+def del_payment(query: PaymentSearchSchema):
+    """Deletes a Payment based on it's Id.
 
-    Retorna uma mensagem de confirmação da remoção do Pagamento alvo.
+    Returns a message confirming target Payment deletion.
     """
-    pagamento_id = query.id
-    logger.debug(f"Removendo dados sobre Pagamento #{pagamento_id}")
+    payment_id = query.id
+    logger.debug(f"Deleting Payment #{payment_id}")
 
-    # Cria conexão com a base para fazer a busca
+    # Creates database connectio to perform the search
     session = Session()
     
-    # Buscando e removendo o Pagamento
-    pagamento_a_remover: Pagamento = session.query(Pagamento).filter(Pagamento.id == pagamento_id).first()
-    valor_a_descontar = pagamento_a_remover.valor
-    pagamento_descricao = pagamento_a_remover.descricao
-    foi_removido = session.query(Pagamento).filter(Pagamento.id == pagamento_id).delete()
+    # Searching and deleting target Payment
+    payment_to_delete: Payment = session.query(Payment).filter(Payment.id == payment_id).first()
+    value_to_discount = payment_to_delete.value
+    payment_description = payment_to_delete.description
+    payment_deletion_success = session.query(Payment).filter(Payment.id == payment_id).delete()
     session.commit()
 
-    if foi_removido:
-        logger.debug(f"Removendo Pagamento #{pagamento_id}:'{pagamento_descricao}'")
-        atualiza_cache_da_soma_pagamentos(-valor_a_descontar)
-        # retorna a representação da mensagem de confirmação
-        return {"mesage": "Pagamento removido", "id": pagamento_id, "descricao": pagamento_descricao}
+    if payment_deletion_success:
+        logger.debug(f"Payment deleted #{payment_id}:'{payment_description}'")
+        updates_payments_sum_cache(-value_to_discount)
+        # retuns the representation of the confirmation message
+        return {"message": "Payment deleted", "id": payment_id, "description": payment_description}
     else:
-        error_msg = "Pagamento não encontrado na base :/"
-        logger.warning(f"Erro ao remover Pagamento #{pagamento_id}:'{pagamento_descricao}': {error_msg}")
-        return {"mesage": error_msg}, 404
+        error_msg = "Payment not found in database :/"
+        logger.warning(f"Error while deleting Payment #{payment_id}:'{payment_description}': {error_msg}")
+        return {"message": error_msg}, 404
 
 
-@app.get('/soma_pagamentos', tags=[analise_tag],
-         responses={"200": SomaPagamentosSchema, "404": ErrorSchema})
-def soma_pagamentos():
-    """Retorna a soma dos valores de todos os Pagamentos."""
-    soma_pagamentos: float = cache.get('soma_pagamentos')
-    valida_cache_da_soma_de_pagamentos(soma_pagamentos)
+@app.get('/payments_sum', tags=[analysis_tag],
+         responses={"200": PaymentsSumSchema, "404": ErrorSchema})
+def payments_sum():
+    """Returns the sum of value field from all database Payments."""
+    payments_sum: float = cache.get('payments_sum')
+    validates_payments_sum_cache(payments_sum)
         
-    if soma_pagamentos:
-        logger.debug(f"Obtida a soma dos valores dos Pagamentos")
-        return {"soma_pagamentos": soma_pagamentos}, 200
+    if payments_sum:
+        logger.debug(f"Got sum of values from all Payments in the database")
+        return {"payments_sum": payments_sum}, 200
     else:
-        error_msg = "Não foi possível obter a soma dos valores dos Pagamentos :/"
+        error_msg = "It was not possible to obtain the sum of Payment values:/"
         logger.warning(error_msg)
-        return {"mesage": error_msg}, 404
+        return {"message": error_msg}, 404
 
 
 #  --------------------------------------------------------------------------------------
-#  Funções auxiliares
+#  Auxiliary functions
 #  --------------------------------------------------------------------------------------
-def valida_cache_da_soma_de_pagamentos(soma_pagamentos):
-    """ Verifica se existe valor da soma de Pagamentos no seu respectivo cache.
-    Se não existir, calcula a soma e preenche o cache.
+def validates_payments_sum_cache(payments_sum):
+    """ Checks if there is a value of the sum of Payments in its respective cache.
+    If it does not exist, it calculates the sum and fills the cache.
     
-    Retorna soma de Pagamentos validada
+    Returns validate sum of Payments
     """
-    if soma_pagamentos is None:
+    if payments_sum is None:
         session = Session()
-        soma_pagamentos = session.query(func.sum(Pagamento.valor)).scalar()
-        cache.set('soma_pagamentos', soma_pagamentos)
-    return soma_pagamentos
+        payments_sum = session.query(func.sum(Payment.value)).scalar()
+        cache.set('payments_sum', payments_sum)
+    return payments_sum
 
 
-def atualiza_cache_da_soma_pagamentos(valor):
-    """ Atualiza cache da soma de Pagamentos de acordo com o 'valor' fornecido."""
-    soma_pagamentos: float = cache.get('soma_pagamentos')
-    soma_pagamentos = valida_cache_da_soma_de_pagamentos(soma_pagamentos)
-    cache.set('soma_pagamentos', soma_pagamentos + valor)
+def updates_payments_sum_cache(value):
+    """ Updates cache of the sum of Payments according to the provided 'value'."""
+    payments_sum: float = cache.get('payments_sum')
+    payments_sum = validates_payments_sum_cache(payments_sum)
+    cache.set('payments_sum', payments_sum + value)

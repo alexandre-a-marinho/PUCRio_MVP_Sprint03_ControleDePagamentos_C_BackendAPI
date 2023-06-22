@@ -3,27 +3,27 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 import os
 
-# Importa os elementos definidos no modelo
+# Imports elements defined in the model
 from model.base import Base
-from model.pagamento import Pagamento
+from model.payment import Payment
 
-# Especifica o diretório e verifica se ele já existe antes de criá-lo
+# Specifies the database directory and verifies if it exists
 db_path = "database/"
 if not os.path.exists(db_path):
    os.makedirs(db_path)
 
-# url de acesso ao banco (essa é uma url de acesso ao sqlite local)
+# Url to access the database (this is a local sqlite access url)
 db_url = 'sqlite:///%s/db.sqlite3' % db_path
 
-# Cria a engine de conexão com o banco
+# Creates the engine that connects to the database
 engine = create_engine(db_url, echo=False)
 
-# Instancia um criador de seção com o banco
+# Creates a session creator with the database
 Session = sessionmaker(bind=engine)
 
-# Cria o banco se ele não existir 
+# Creates the database, if it doesn´t exist yet
 if not database_exists(engine.url):
     create_database(engine.url) 
 
-# Cria as tabelas do banco, caso não existam
+# Creates database tables, if they don´t exist yet
 Base.metadata.create_all(engine)
