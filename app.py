@@ -21,7 +21,7 @@ cache = Cache(app)
 
 # Defining tags
 home_tag = Tag(name="Documentation", description="Documentation selection: Swagger, Redoc or RapiDoc")
-payment_tag = Tag(name="Payment", description="Addition, visualization and deletion of payments from the database")
+payment_tag = Tag(name="Payment", description="Addition, visualization, edition and deletion of payments from the database")
 analysis_tag = Tag(name="Analysis", description="Statistics and analysis regarding the payments in the database")
 
 
@@ -72,6 +72,50 @@ def add_payment(form: PaymentSchema):
         # in case of a non-expected error
         error_msg = "It was not possible to save the new Payment :/"
         logger.warning(f"Error while adding Payment #{payment.id}({payment.description}): {error_msg}")
+        return {"message": error_msg}, 400
+
+
+@app.put('/paymentedition', tags=[payment_tag],
+          responses={"200": PaymentViewSchema, "409": ErrorSchema, "400": ErrorSchema})
+def edit_payment(query: PaymentSearchSchema, form: PaymentSchema,):
+    """Edits an existing Payment in the database.
+
+    Returns the representation of the edited Payment (as per PaymentViewSchema).
+    """
+    edited_payment_id = query.id
+    logger.debug(f"Edited Payment is described by: '#{edited_payment_id}({form.description})'")
+    
+    try:
+        # Creates database connection
+        logger.debug(f"Editing Payment #{edited_payment_id}")
+        session = Session()
+        
+        # Selects item to edit it in the database table and then commits it
+        database_payment_to_edit = session.query(Payment).filter(Payment.id == edited_payment_id).first()
+        old_value = database_payment_to_edit.value;
+        database_payment_to_edit.description = form.description
+        database_payment_to_edit.category = form.category
+        database_payment_to_edit.subcategory = form.subcategory
+        database_payment_to_edit.value = form.value
+        database_payment_to_edit.nb_installments = form.nb_installments
+        database_payment_to_edit.insertion_date = date.today()
+        session.commit()
+
+        # Updates Sum of values
+        value_to_add = (form.value - old_value)
+        updates_payments_sum_cache(value_to_add)
+        
+        return show_payment(database_payment_to_edit), 200
+
+    except IntegrityError as e:
+        error_msg = "Integrity error on new Payment addition :/"
+        logger.warning(f"Error while editing Payment #{database_payment_to_edit.id}({database_payment_to_edit.description}): {error_msg}")
+        return {"message": error_msg}, 409
+
+    except Exception as e:
+        # in case of a non-expected error
+        error_msg = "It was not possible to save the new Payment :/"
+        logger.warning(f"Error while editing Payment #{database_payment_to_edit.id}({database_payment_to_edit.description}): {error_msg}")
         return {"message": error_msg}, 400
 
 
@@ -134,7 +178,7 @@ def del_payment(query: PaymentSearchSchema):
     payment_id = query.id
     logger.debug(f"Deleting Payment #{payment_id}")
 
-    # Creates database connectio to perform the search
+    # Creates database connection to perform the search
     session = Session()
     
     # Searching and deleting target Payment
