@@ -14,4 +14,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Defines the comand to execute the API (this command is executed as soon as the container is up and running)
-CMD ["flask", "run", "--host", "0.0.0.0", "--port", "5000", "reload"]
+CMD ["flask", "run", "--host", "0.0.0.0", "--port", "5000", "--reload"]
